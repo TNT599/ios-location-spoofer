@@ -3,6 +3,8 @@ name: Build and Upload to TestFlight
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -92,7 +94,18 @@ jobs:
               print("WARNING: libgolocationspoofer.a build ref not found, skipping patch")
           PYEOF
 
+      - name: Build for CI (no signing)
+        run: |
+          xcodebuild build \
+            -project location-spoofer.xcodeproj \
+            -scheme location-spoofer \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
       - name: Install Apple certificate
+        if: ${{ github.event_name != 'pull_request' && secrets.CERTIFICATE_P12 != '' && secrets.CERTIFICATE_PASSWORD != '' && secrets.APP_PROVISIONING_PROFILE != '' && secrets.TUNNEL_PROVISIONING_PROFILE != '' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
         env:
           CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
@@ -108,6 +121,7 @@ jobs:
           security list-keychain -d user -s $KEYCHAIN_PATH
 
       - name: Install provisioning profiles
+        if: ${{ github.event_name != 'pull_request' && secrets.CERTIFICATE_P12 != '' && secrets.CERTIFICATE_PASSWORD != '' && secrets.APP_PROVISIONING_PROFILE != '' && secrets.TUNNEL_PROVISIONING_PROFILE != '' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
         env:
           APP_PROFILE: ${{ secrets.APP_PROVISIONING_PROFILE }}
           TUNNEL_PROFILE: ${{ secrets.TUNNEL_PROVISIONING_PROFILE }}
@@ -117,6 +131,7 @@ jobs:
           echo -n "$TUNNEL_PROFILE" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/tunnel.mobileprovision
 
       - name: Setup App Store Connect API key
+        if: ${{ github.event_name != 'pull_request' && secrets.CERTIFICATE_P12 != '' && secrets.CERTIFICATE_PASSWORD != '' && secrets.APP_PROVISIONING_PROFILE != '' && secrets.TUNNEL_PROVISIONING_PROFILE != '' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
         env:
           API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
         run: |
@@ -124,6 +139,7 @@ jobs:
           echo -n "$API_KEY_P8" | base64 --decode -o $HOME/private_keys/AuthKey_N68G775GA2.p8
 
       - name: Build archive
+        if: ${{ github.event_name != 'pull_request' && secrets.CERTIFICATE_P12 != '' && secrets.CERTIFICATE_PASSWORD != '' && secrets.APP_PROVISIONING_PROFILE != '' && secrets.TUNNEL_PROVISIONING_PROFILE != '' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
         run: |
           xcodebuild archive \
             -project location-spoofer.xcodeproj \
@@ -142,6 +158,7 @@ jobs:
             CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
 
       - name: Export IPA
+        if: ${{ github.event_name != 'pull_request' && secrets.CERTIFICATE_P12 != '' && secrets.CERTIFICATE_PASSWORD != '' && secrets.APP_PROVISIONING_PROFILE != '' && secrets.TUNNEL_PROVISIONING_PROFILE != '' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
         run: |
           cat > $RUNNER_TEMP/export.plist << EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -175,6 +192,7 @@ jobs:
             -authenticationKeyIssuerID 9aaa8cda-ed99-4624-b2aa-3b4c8b9e3245
 
       - name: Upload to TestFlight
+        if: ${{ github.event_name != 'pull_request' && secrets.CERTIFICATE_P12 != '' && secrets.CERTIFICATE_PASSWORD != '' && secrets.APP_PROVISIONING_PROFILE != '' && secrets.TUNNEL_PROVISIONING_PROFILE != '' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
         env:
           API_KEY_ID: N68G775GA2
           API_ISSUER_ID: 9aaa8cda-ed99-4624-b2aa-3b4c8b9e3245
@@ -185,6 +203,7 @@ jobs:
             --apiKey $API_KEY_ID \
             --apiIssuer $API_ISSUER_ID
       - name: Upload IPA as Artifact
+        if: ${{ github.event_name != 'pull_request' && secrets.CERTIFICATE_P12 != '' && secrets.CERTIFICATE_PASSWORD != '' && secrets.APP_PROVISIONING_PROFILE != '' && secrets.TUNNEL_PROVISIONING_PROFILE != '' && secrets.APP_STORE_CONNECT_API_KEY != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: GPS-Tool-IPA
